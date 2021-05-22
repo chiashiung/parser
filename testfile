@@ -1,0 +1,19 @@
+
+boolean a = false;
+boolean b=true,c=false;
+boolean d,e=false;
+static boolean f=true;
+
+string a = "fgsdgs";
+string b = "sk",f="fs";
+string v,f="fd";
+static string hgh = "hfdg";
+
+int e = -13;
+int d= -13.13;    
+static int fdsgs=1232;
+int a = 313212;
+int d=13.13;	
+int a = -15312;
+int fd=41.45;
+

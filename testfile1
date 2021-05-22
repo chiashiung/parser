@@ -1,0 +1,10 @@
+boolean[] a=new boolean[10];
+
+int[]  a = new int[10];
+float[] b = new float[20];
+char[] c = new char[30];
+string[] d = new string[40];
+boolean[] e = new boolean[50];
+int[] f = new int[0];
+
+final float p = 3.14;

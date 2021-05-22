@@ -1,0 +1,3 @@
+public boolean func1(int x, int y, string z) {}
+private string func2(boolean a) {}
+protected void func3() {}

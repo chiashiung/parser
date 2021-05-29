@@ -12,7 +12,6 @@
 	int charnum = 0;
 	char temp[256];
 
-	void showinfo(char *type,char *word);
 	void nlinecount(char *word);
 	void create();
 	int lookup(char *word);
@@ -24,111 +23,116 @@
 /* Define regular expression label */
 digit           [0-9]
 letter			[A-Za-z]
-pinumber		[1-9]{digit}+
-npinumber       [-][1-9]{digit}+|[0]
+inumber			(-?{digit}+)
 fnumber         (-?({digit}+|{digit}*\.{digit}+)([eE][+-]?{digit}+)?f?)
 id              ([\_\$]|{letter})+([\_\$]|{letter}|{digit})*
 inv_id			([\^\#]|{digit})+([\_\$]|{letter}|{digit})*
 ws				[ \t]
-inv_str         \'[^(\'|\n)]*\'|\"[^(\"|\n)]*
-string          \"([^(\"|\n|\\\")]|\\\")*\"
+inv_str         \"[\"]+\"|\'[^(\'|\n)]*\'|\"[^(\"|\n)]*|\"[^(\"|\n)]*\\\"
+string          \"[^\n]*\"
+comments        "/*"(.|\n)*"*/"
 comment         ([/]{2}.*)\n
-comments        "/*"[^("*/")]*"*/"
+
 
 /* Rule Section*/
 %%
 <<EOF>>     	{linenum++;yyterminate();}
-"+" 			{return PLUS;}			
-"-"				{return MINUS;}
-"*" 			{return MUL;}
-"/"				{return DIV;}
-"%"				{return MOD;}
-"++" 			{return INC;}
-"--" 			{return DEC;}
+"+" 			{strcat(msg,"+");return PLUS;}			
+"-"				{strcat(msg,"-");return MINUS;}
+"*" 			{strcat(msg,"*");return MUL;}
+"/"				{strcat(msg,"/");return DIV;}
+"%"				{strcat(msg,"%");return MOD;}
+"++" 			{strcat(msg,"++");return INC;}
+"--" 			{strcat(msg,"--");return DEC;}
 
-"=" 			{return '=';}
-"+="			{return ADD_ASSIGN;}
-"-="			{return SUB_ASSIGN;}
-"*="			{return MUL_ASSIGN;}
-"/="			{return DIV_ASSIGN;}
-"%="			{return MOD_ASSIGN;}
+"=" 			{strcat(msg,"=");return '=';}
+"+="			{strcat(msg,"+=");return ADD_ASSIGN;}
+"-="			{strcat(msg,"-=");return SUB_ASSIGN;}
+"*="			{strcat(msg,"*=");return MUL_ASSIGN;}
+"/="			{strcat(msg,"/=");return DIV_ASSIGN;}
+"%="			{strcat(msg,"%=");return MOD_ASSIGN;}
 
-"<"				{return LT;}
-">"				{return GT;}
-"<=" 			{return LEQ;}
-">=" 			{return GEQ;}
-"==" 			{return EQ;}
-"!=" 			{return NEQ;}
+"<"				{strcat(msg,"<");return LT;}
+">"				{strcat(msg,">");return GT;}
+"<=" 			{strcat(msg,"<=");return LEQ;}
+">=" 			{strcat(msg,">=");return GEQ;}
+"==" 			{strcat(msg,"==");return EQ;}
+"!=" 			{strcat(msg,"!=");return NEQ;}
 
-"&&" 			{return LAND;}
-"||" 			{return LOR;}
-"!"				{return NOT;}
+"&&" 			{strcat(msg,"&&");return LAND;}
+"||" 			{strcat(msg,"||");return LOR;}
+"!"				{strcat(msg,"!");return NOT;}
 
-"("				{return '(';}
-")"				{return ')';}
-"["				{return '[';}
-"]"				{return ']';}
-"{"				{return '{';}	
-"}"				{return '}';}
+"("				{strcat(msg,"(");return '(';}
+")"				{strcat(msg,")");return ')';}
+"["				{strcat(msg,"[");return '[';}
+"]"				{strcat(msg,"]");return ']';}
+"{"				{strcat(msg,"{");return '{';}	
+"}"				{strcat(msg,"}");return '}';}
 
-","				{return ',';}
-";"				{return ';';}
-":"				{return ':';}
+"."				{strcat(msg,".");return '.';}
+","				{strcat(msg,",");return ',';}
+";"				{strcat(msg,";");return ';';}
+":"				{strcat(msg,":");return ':';}
 "\n"            {linenum++;return NEWLINE;}
 
-boolean			{return BOOL;}
-char			{return CHAR;}
-int				{return INT;}
-float			{return FLOAT;}
-string			{return STRING;}
-void			{return VOID;}
+boolean			{strcat(msg,"boolean");return BOOL;}
+char			{strcat(msg,"char");return CHAR;}
+int				{strcat(msg,"int");return INT;}
+float			{strcat(msg,"float");return FLOAT;}
+string			{strcat(msg,"string");return STRING;}
+void			{strcat(msg,"void");return VOID;}
+class			{strcat(msg,"class");return CLASS;}
 
-final			{return FINAL;}
-new				{return NEW;}
-static			{return STATIC;}
+final			{strcat(msg,"final");return FINAL;}
+new				{strcat(msg,"new");return NEW;}
+static			{strcat(msg,"static");return STATIC;}
 
-public			{return PUBLIC;}
-protected		{return PROTECTED;}
-private			{return PRIVATE;}
+public			{strcat(msg,"public");return PUBLIC;}
+protected		{strcat(msg,"protected");return PROTECTED;}
+private			{strcat(msg,"private");return PRIVATE;}
 
-true			{return TRUE;}
-false			{return FALSE;}
+true			{strcat(msg,"true");return TRUE;}
+false			{strcat(msg,"false");return FALSE;}
 
-if				{return IF;}
-else			{return ELSE;}
+if				{strcat(msg,"if");return IF;}
+else			{strcat(msg,"else");return ELSE;}
+while			{strcat(msg,"while");return WHILE;}
+for				{strcat(msg,"for");return FOR;}
 
-print			{return PRINT;}
+print			{strcat(msg,"print");return PRINT;}
+return			{strcat(msg,"return");return RETURN;}
+read			{strcat(msg,"read");return READ;}
 
 break |
 byte |
 case |
 catch |
-class |
 continue |
 default |
 do |
 double |
 extend |
 finally |
-for |
 implements |
 long |
-main |
-return |
 short |
 switch |
 this |
-try |
-while			{showinfo("reserved word",yytext);}
-{pinumber}      {sscanf(yytext, "%d", &yylval.pint_val); return PINT_LIT;}
-{npinumber}		{sscanf(yytext, "%d", &yylval.npint_val); return NPINT_LIT;}
-{fnumber}       {sscanf(yytext, "%f", &yylval.float_val); return FLOAT_LIT;}
-{id}			{yylval.id_val = strdup(yytext); return ID;}
-{inv_id}		{showinfo("invalid identifier",yytext);}
+try 			{;}
+{inumber}       {sscanf(yytext,"%d",&yylval.int_val);
+				 if(yylval.int_val>0) return PINT_LIT;
+				 else return NPINT_LIT;
+				}
+{fnumber}       {sscanf(yytext,"%f",&yylval.float_val);return FLOAT_LIT;}
+{id}			{sprintf(temp,"%s",yytext);strcat(msg,temp);yylval.id_val = strdup(yytext);return ID;}
+{inv_id}		{printf("Line:%d,1st char:%d,\"%s\" is a \"invalid identifier\"\n",linenum+1,charnum+1,yytext);}
 {ws}			{sprintf(temp,"%s",yytext);strcat(msg,temp);}
 {inv_str}       {printf("Line:%d,1st char:%d,%s is a \"invalid string\"\n",linenum+1,charnum+1,yytext);}
-{string}        {yylval.s_val = strdup(yytext); return STRING_LIT;;}
-{comment}       {linenum++;charnum=0;}
+{string}        {yylval.s_val = strdup(yytext);return STRING_LIT;;}
+{comment}       {linenum++;charnum=0;
+				 printf("Line %d : %s%s",linenum,msg,yytext);
+				 memset(msg,0,256);}
 {comments}		{nlinecount(yytext);}
 .				{;}
 %%
@@ -137,18 +141,19 @@ int yywrap(void)
     return 1;
 }
 
-void showinfo(char *type,char *word){
-	printf("Line:%d,1st char:%d,\"%s\" is a \"%s\"\n",linenum+1,charnum+1,word,type);
-	charnum += yyleng;
-}
-
 void nlinecount(char* word){
 	int count=0;
 	for(int i=0;i<yyleng;i++){
 		count++;
 		if((int)word[i]==10){
+			printf("Line %d : %s\n",linenum+1,msg);
 			linenum++;
 			count=0;
+			memset(msg,0,256);
+		}
+		else{
+			sprintf(temp,"%c",word[i]);
+			strcat(msg,temp);
 		}
 	}
 	charnum += count;

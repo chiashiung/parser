@@ -13,14 +13,13 @@
 %}
 
 %union{
-	int pint_val;
-	int npint_val;
+	int int_val;
 	float float_val;
 	char *id_val;
 	char *s_val;
 }
 
-%token	BOOL CHAR INT FLOAT STRING VOID
+%token	BOOL CHAR INT FLOAT STRING VOID CLASS
 %token	FINAL NEW STATIC
 %token  PUBLIC PROTECTED PRIVATE
 %token	PLUS MINUS MUL DIV MOD INC DEC
@@ -28,11 +27,11 @@
 %token  TRUE FALSE
 %token	ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token  LT GT LEQ GEQ EQ NEQ
-%token  LAND LOR NOT IF ELSE
-%token  PRINT
+%token  LAND LOR NOT IF ELSE WHILE FOR
+%token  PRINT RETURN READ
 
-%token  <pint_val> PINT_LIT
-%token	<npint_val> NPINT_LIT
+%token  <int_val> PINT_LIT
+%token	<int_val> NPINT_LIT
 %token  <float_val> FLOAT_LIT
 %token	<id_val> ID
 %token  <s_val> STRING_LIT
@@ -51,110 +50,118 @@ stmts: stmt stmts
 
 stmt: declare
 	| classes
+	| create_obj
 	| compond
 	| simple
 	| conditional
-	/*| loop
+	| loop
 	| return
-	| method_call*/
+	| methodInvoc
 	| NEWLINE		{	printf("Line %d : %s\n",linenum,msg);
 					 	memset(msg, 0, 256);
 					}
-	| error NEWLINE {yyerrok;}
+	| error NEWLINE {yyerrok;memset(msg, 0, 256);}
 	;
 
 declare: static type_dec
 	;
 
-static: STATIC	{strcat(msg,"static");}
-	| FINAL		{strcat(msg,"final");}
+static: STATIC
+	| FINAL
 	|
 	;
 
-type_dec: BOOL {strcat(msg,"boolean");} BOOL_list ';' {strcat(msg,";");}
-	| CHAR {strcat(msg,"char");} CHAR_list ';' {strcat(msg,";");}
-	| INT {strcat(msg,"int");}	INT_list ';' {strcat(msg,";");}
-	| FLOAT {strcat(msg,"float");} FLOAT_list ';' {strcat(msg,";");}
-	| STRING {strcat(msg,"string");} STRING_list ';' {strcat(msg,";");}
+type_dec: BOOL BOOL_list ';'
+	| CHAR CHAR_list ';'
+	| INT INT_list ';'
+	| FLOAT FLOAT_list ';'
+	| STRING STRING_list ';'
 	;
 	
-BOOL_list: ID_term  BOOL_init 
-	| ID_term BOOL_init ','{strcat(msg,",");} BOOL_list
-	| '['']' {strcat(msg,"[]");} ID_term '=' {strcat(msg,"=");} NEW {strcat(msg,"new");} BOOL '[' {strcat(msg,"[");} int_const ']' {strcat(msg,"]");}
+BOOL_list: ID BOOL_init 
+	| ID BOOL_init ',' BOOL_list
+	| '['']' ID '=' NEW BOOL '[' int_const ']'
 	;
 
-BOOL_init: '=' {strcat(msg,"=");} TRUE {strcat(msg,"true");}
-	| '=' {strcat(msg,"=");} FALSE	{strcat(msg,"false");}
+BOOL_init: '=' TRUE
+	| '=' FALSE
 	|
 	;
 
-CHAR_list: ID_term CHAR_init		/*char init字元如何接*/
-	| ID_term CHAR_init ',' {strcat(msg,",");} CHAR_list
-	| '['']' {strcat(msg,"[]");} ID_term '=' {strcat(msg,"=");} NEW {strcat(msg,"new");} CHAR '[' {strcat(msg,"[");} int_const ']' {strcat(msg,"]");}
+CHAR_list: ID CHAR_init		/*char init字元如何接*/
+	| ID CHAR_init ',' CHAR_list
+	| '['']' ID '=' NEW CHAR '[' int_const ']'
 	;
 CHAR_init:
 	;
 
-INT_list: ID_term INT_init
-	| ID_term INT_init ',' {strcat(msg,",");} INT_list
-	| '['']' {strcat(msg,"[]");} ID_term '=' {strcat(msg,"=");} NEW {strcat(msg,"new");} INT '[' {strcat(msg,"[");} int_const ']' {strcat(msg,"]");}
+INT_list: ID INT_init
+	| ID INT_init ',' INT_list
+	| '['']' ID '=' NEW INT '[' int_const ']'
 	;
 
-INT_init: '=' PINT_LIT	{sprintf(temp," = %d",$2);
+INT_init: '=' PINT_LIT	{sprintf(temp,"%d",$2);
              			 strcat(msg,temp);}
-	| '=' NPINT_LIT		{sprintf(temp," = %d",$2);
+	| '=' NPINT_LIT		{sprintf(temp,"%d",$2);
 						 strcat(msg,temp);}
 	|
 	;
 
-FLOAT_list: ID_term FLOAT_init
-	| ID_term FLOAT_init ',' {strcat(msg,",");} FLOAT_list
-	| '['']' {strcat(msg,"[]");} ID_term '=' {strcat(msg,"=");} NEW {strcat(msg,"new");} FLOAT '[' {strcat(msg,"[");} int_const ']' {strcat(msg,"]");}
+FLOAT_list: ID FLOAT_init
+	| ID FLOAT_init ',' FLOAT_list
+	| '['']' ID '=' NEW FLOAT '[' int_const ']'
 	;
 
-FLOAT_init: '=' FLOAT_LIT {sprintf(temp," = %f",$2);
+FLOAT_init: '=' FLOAT_LIT {sprintf(temp,"%f",$2);
 						   strcat(msg,temp);}
 	|
 	;
 
-STRING_list: ID_term STRING_init
-	| ID_term STRING_init ',' {strcat(msg,",");} STRING_list
-	| '['']' {strcat(msg,"[]");} ID_term '=' {strcat(msg,"=");} NEW {strcat(msg,"new");} STRING '[' {strcat(msg,"[");} int_const ']' {strcat(msg,"]");}
+STRING_list: ID STRING_init
+	| ID STRING_init ',' STRING_list
+	| '['']' ID '=' NEW STRING '[' int_const ']'
 	;
 
-STRING_init: '=' STRING_LIT	{sprintf(temp," = %s",$2);
+STRING_init: '=' STRING_LIT	{sprintf(temp,"%s",$2);
 							 strcat(msg,temp);}
 	|
 	;
-
-ID_term: ID {	sprintf(temp,"%s",$1);
-				strcat(msg,temp);}
-    ;
 
 int_const: PINT_LIT {	sprintf(temp,"%d",$1);
 						strcat(msg,temp);}
 	;
 
-classes: method
-	;
-	
-method: method_mod mtype ID_term '(' {strcat(msg,"(");} arguments ')' {strcat(msg,")");} '{' {strcat(msg,"{");} compond '}' {strcat(msg,"}");}
+classes: CLASS ID '{' fields{printf("hi");} method '}'{printf("hi");}
 	;
 
-method_mod: PUBLIC	{strcat(msg,"public");}
-	| PROTECTED		{strcat(msg,"protected");}
-	| PRIVATE		{strcat(msg,"private");}
+fields: field
+	| field fields
+	;
+
+field: declare
+	| create_obj
+	| NEWLINE {printf("Line %d : %s\n",linenum,msg);memset(msg, 0, 256);}
+	;
+
+method: method_mod{printf("hi");} mtype ID '(' arguments ')' compond
+	;
+
+method_mod: PUBLIC
+	| PROTECTED
+	| PRIVATE
+	|
 	;
 
 mtype: type 
-	| VOID			{strcat(msg,"void");}
+	| VOID
+	|
 	;
 
-type: BOOL			{strcat(msg,"bool");}
-	| CHAR			{strcat(msg,"char");}
-	| INT			{strcat(msg,"int");}
-	| FLOAT			{strcat(msg,"float");}
-	| STRING		{strcat(msg,"string");}
+type: BOOL			
+	| CHAR
+	| INT
+	| FLOAT	
+	| STRING
 	;
 
 arguments: nonemp_arguments
@@ -162,81 +169,110 @@ arguments: nonemp_arguments
 	;
 
 nonemp_arguments: argument
-	| argument ',' {strcat(msg,",");} nonemp_arguments
+	| argument ',' nonemp_arguments
 	;
 
-argument: type ID_term
+argument: type ID
 	;
 
-
-compond: '{' {strcat(msg,"{");} stmts '}' {strcat(msg,"}");}
+create_obj: ID ID '=' NEW ID '(' ')' ';'
 	;
 
-simple: name expression ';'
+compond: '{' stmts '}'
+	;
+
+simple: name '=' expression ';'
 	| PRINT '(' expression ')' ';'
+	| READ '(' name ')' ';'
 	| name INC ';'
 	| name DEC ';'
 	| expression ';'
+	|
 	;
 
-name: ID_term
-	| ID_term '.' ID_term
+name: ID
+	| ID '.' ID
 	;
 
 expression: term
-	| expression '+' term
-	| expression '-' term
+	| expression PLUS term
+	| expression MINUS term
 	;
 
-term: factor 
+term: factor
 	| factor MUL term
 	| factor DIV term
 	;
 
-factor: ID_term
+factor: ID
 	| '(' expression ')'
-	| prefixop ID_term
-	| ID_term postfixop
+	| prefixop ID
+	| ID postfixop
 	| methodInvoc
+	| PINT_LIT    {sprintf(temp,"%d",$1);
+				   strcat(msg,temp);} 
+	| NPINT_LIT   {sprintf(temp,"%d",$1);
+				   strcat(msg,temp);}
+	| FLOAT_LIT   {sprintf(temp,"%f",$1);
+				   strcat(msg,temp);}
 	;
 
 prefixop: INC
 	| DEC
 	| PLUS
-	| MINUS
+	| MINUS	
 	;
 
 postfixop: INC
 	| DEC
 	;
 
-methodInvoc: name'('invoc_exp')'
+methodInvoc: name '(' invoc_exp ')'
 
 invoc_exp: expression
 	| expression ',' invoc_exp
 	;
 
-conditional: IF {strcat(msg,"if");} '(' {strcat(msg,"(");} bool_expr ')' {strcat(msg,")");} simple_compond else_expr
+conditional: IF '(' bool_expr ')' simple_compond else_expr
 	;
 
-bool_expr: 
+bool_expr: expression infixop expression
+	;
+
+infixop: EQ
+	| NEQ
+	| LT
+	| GT
+	| LEQ
+	| GEQ
 	;
 
 simple_compond: simple
 	| compond
 	;
 
-else_expr: ELSE {strcat(msg,"else");} simple_compond
+else_expr: ELSE simple_compond
 	;
 
-/*loop:
+loop: WHILE '(' bool_expr ')' simple_compond
+	| FOR '(' forinit ';' bool_expr ';' forupdate ')' simple_compond
 	;
 
-return:
+forinit: int_dec ID '=' expression
+	| int_dec ID '=' expression ',' forinit
 	;
 
-method_call:
-	;*/
+int_dec: INT
+	|
+	;
+
+forupdate: ID INC
+	| ID DEC
+	;
+
+return: RETURN expression ';'
+	;
+
 
 
 /*C Code Section*/
@@ -258,6 +294,5 @@ int main(int argc, char *argv[])
 void yyerror (char const *s)
 {
 	printf("%s at line %d\n",s,linenum+1);
-	memset(msg, 0, 256);
 }
 

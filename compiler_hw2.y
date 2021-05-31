@@ -5,11 +5,23 @@
     #include <string.h>
 
     extern int linenum;
+	extern int charnum;
+	extern int befchar;
     extern int yylex();
     extern FILE *yyin;
+	extern void create();
+	extern char* yytext;
+
+	int scope = 0;
+	int isdec = 0;
+	int duplicate = 0;
+	int boolexperr = 0;
+	int errnum;
+	char errword;
 	void yyerror();
 	char msg[256];
 	char temp[256];
+	char dupl[256];
 %}
 
 %union{
@@ -41,7 +53,7 @@
 /*Grammer Section*/
 %%
 
-program: stmt stmts
+program: stmt stmts	
 	;
 
 stmts: stmt stmts
@@ -50,32 +62,45 @@ stmts: stmt stmts
 
 stmt: declare
 	| classes
-	| create_obj
 	| compond
 	| simple
 	| conditional
 	| loop
 	| return
 	| methodInvoc
-	| NEWLINE		{	printf("Line %d : %s\n",linenum,msg);
-					 	memset(msg, 0, 256);
-					}
-	| error NEWLINE {yyerrok;memset(msg, 0, 256);}
+	| NEWLINE			{ printf("Line %d : %s\n",linenum,msg);
+					 	  memset(msg, 0, 256);
+						  if(duplicate==1){
+						  	printf("%s",dupl);
+							duplicate=0;
+						  }
+						  if(boolexperr==1){
+						  	printf("Line %d, 1st char: %d, a syntax error at \"%c\"\n",linenum,errnum,errword);
+						  	boolexperr=0;
+						  }
+						}
+	| error NEWLINE 	{ yyerrok;
+						  memset(msg, 0, 256); }
 	;
 
-declare: static type_dec
+declare: static type id_list {isdec=1;}
 	;
 
 static: STATIC
 	| FINAL
+	| PUBLIC
+	| PROTECTED
+	| PRIVATE
 	|
 	;
 
-type_dec: BOOL BOOL_list ';'
-	| CHAR CHAR_list ';'
-	| INT INT_list ';'
-	| FLOAT FLOAT_list ';'
-	| STRING STRING_list ';'
+id_list: BOOL_list ';'
+	| CHAR_list ';'
+	| INT_list ';'
+	| FLOAT_list ';'
+	| STRING_list ';'
+	| ID'(' arguments ')' isline compond
+	| ID'('')' isline compond
 	;
 	
 BOOL_list: ID BOOL_init 
@@ -104,6 +129,7 @@ INT_init: '=' PINT_LIT	{sprintf(temp,"%d",$2);
              			 strcat(msg,temp);}
 	| '=' NPINT_LIT		{sprintf(temp,"%d",$2);
 						 strcat(msg,temp);}
+	| '=' expression
 	|
 	;
 
@@ -131,8 +157,12 @@ int_const: PINT_LIT {	sprintf(temp,"%d",$1);
 						strcat(msg,temp);}
 	;
 
-classes: CLASS ID '{' fields{printf("hi");} method '}'{printf("hi");}
+isline: 
+	| NEWLINE		{printf("Line %d : %s\n",linenum,msg);
+					 memset(msg, 0, 256);}
 	;
+
+classes: CLASS ID isline '{' {scope++;} fields '}'{scope--;}
 
 fields: field
 	| field fields
@@ -140,21 +170,15 @@ fields: field
 
 field: declare
 	| create_obj
-	| NEWLINE {printf("Line %d : %s\n",linenum,msg);memset(msg, 0, 256);}
-	;
-
-method: method_mod{printf("hi");} mtype ID '(' arguments ')' compond
-	;
-
-method_mod: PUBLIC
-	| PROTECTED
-	| PRIVATE
-	|
-	;
-
-mtype: type 
-	| VOID
-	|
+	| classes
+	| NEWLINE			{   printf("Line %d : %s\n",linenum,msg);
+                        	memset(msg, 0, 256);
+							if(duplicate==1){
+								printf("%s",dupl);
+								duplicate=0;
+							}
+						}
+	| error NEWLINE		{	yyerrok;memset(msg, 0, 256);}
 	;
 
 type: BOOL			
@@ -162,26 +186,23 @@ type: BOOL
 	| INT
 	| FLOAT	
 	| STRING
+	| VOID
 	;
 
-arguments: nonemp_arguments
-	|
-	;
-
-nonemp_arguments: argument
-	| argument ',' nonemp_arguments
+arguments: argument
+	| argument ',' arguments
 	;
 
 argument: type ID
 	;
 
-create_obj: ID ID '=' NEW ID '(' ')' ';'
+create_obj: {isdec=0;}ID ID '=' NEW ID '(' ')' ';'
 	;
 
-compond: '{' stmts '}'
+compond: '{' {scope++;} stmts '}' {scope++;}
 	;
 
-simple: name '=' expression ';'
+simple:name '=' expression ';'
 	| PRINT '(' expression ')' ';'
 	| READ '(' name ')' ';'
 	| name INC ';'
@@ -204,17 +225,26 @@ term: factor
 	| factor DIV term
 	;
 
-factor: ID
+factor: ID iscreate
+	| ID '[' number ']'
 	| '(' expression ')'
 	| prefixop ID
 	| ID postfixop
+	| ID '[' number ']'postfixop
 	| methodInvoc
 	| PINT_LIT    {sprintf(temp,"%d",$1);
 				   strcat(msg,temp);} 
+	  ispostop
 	| NPINT_LIT   {sprintf(temp,"%d",$1);
 				   strcat(msg,temp);}
 	| FLOAT_LIT   {sprintf(temp,"%f",$1);
 				   strcat(msg,temp);}
+	| STRING_LIT  {sprintf(temp,"%s",$1);
+				   strcat(msg,temp);}
+	;
+
+iscreate: ID '=' NEW ID '(' ')'
+	|
 	;
 
 prefixop: INC
@@ -227,6 +257,10 @@ postfixop: INC
 	| DEC
 	;
 
+ispostop: postfixop
+	|
+	;
+
 methodInvoc: name '(' invoc_exp ')'
 
 invoc_exp: expression
@@ -236,7 +270,7 @@ invoc_exp: expression
 conditional: IF '(' bool_expr ')' simple_compond else_expr
 	;
 
-bool_expr: expression infixop expression
+bool_expr: {isdec=0;}expression infixop expression
 	;
 
 infixop: EQ
@@ -252,14 +286,19 @@ simple_compond: simple
 	;
 
 else_expr: ELSE simple_compond
+	|
 	;
 
-loop: WHILE '(' bool_expr ')' simple_compond
-	| FOR '(' forinit ';' bool_expr ';' forupdate ')' simple_compond
+loop: WHILE '('{boolexperr=1;} bool_expr ')'{boolexperr=0;} simple_compond
+	| FOR '('{isdec=0;} forinit ';' bool_expr ';' forupdate ')' simple_compond
+	| error ')'
 	;
 
-forinit: int_dec ID '=' expression
-	| int_dec ID '=' expression ',' forinit
+forinit: int_dec ID isarr '=' expression
+	| int_dec ID isarr '=' expression ',' forinit
+	
+isarr: '[' number ']'
+	|
 	;
 
 int_dec: INT
@@ -268,12 +307,18 @@ int_dec: INT
 
 forupdate: ID INC
 	| ID DEC
+	| ID '[' number ']' INC
+	| ID '[' number ']' DEC
 	;
 
 return: RETURN expression ';'
 	;
 
-
+number: PINT_LIT	{sprintf(temp,"%d",$1);
+                     strcat(msg,temp);}
+	| NPINT_LIT		{sprintf(temp,"%d",$1);
+                     strcat(msg,temp);}
+	;
 
 /*C Code Section*/
 %%
@@ -284,15 +329,23 @@ int main(int argc, char *argv[])
     } else {
         yyin = stdin;
     }
-
+	create();
     yyparse();
-	printf("total line:%d\n",linenum+1);
     fclose(yyin);
     return 0;
 }
 
 void yyerror (char const *s)
-{
-	printf("%s at line %d\n",s,linenum+1);
+{	
+	errword=yytext[0];
+	errnum=charnum+1;
+	if(boolexperr==0){
+		printf("Line %d : %s\n",linenum+1,msg);
+		if((int)yytext[0]!=10)
+			printf("Line %d, 1st char: %d, a syntax error at \"%s\"\n",linenum+1,charnum+1,yytext);
+		else
+			printf("Line %d, 1st char: %d, a syntax error in lacking of semicolon\n",linenum+1,befchar+2);
+	}
+	duplicate=0;
 }
 

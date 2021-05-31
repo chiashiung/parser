@@ -32,7 +32,7 @@
 }
 
 %token	BOOL CHAR INT FLOAT STRING VOID CLASS
-%token	FINAL NEW STATIC
+%token	FINAL NEW STATIC MAIN
 %token  PUBLIC PROTECTED PRIVATE
 %token	PLUS MINUS MUL DIV MOD INC DEC
 %token	NEWLINE
@@ -84,6 +84,7 @@ stmt: declare
 	;
 
 declare: static type id_list {isdec=1;}
+	| MAIN '('')' isline compond
 	;
 
 static: STATIC
@@ -101,6 +102,7 @@ id_list: BOOL_list ';'
 	| STRING_list ';'
 	| ID'(' arguments ')' isline compond
 	| ID'('')' isline compond
+	| MAIN '('')' isline compond
 	;
 	
 BOOL_list: ID BOOL_init 
@@ -340,11 +342,14 @@ void yyerror (char const *s)
 	errword=yytext[0];
 	errnum=charnum+1;
 	if(boolexperr==0){
-		printf("Line %d : %s\n",linenum+1,msg);
-		if((int)yytext[0]!=10)
+		if((int)yytext[0]!=10){
+			printf("Line %d : %s\n",linenum+1,msg);
 			printf("Line %d, 1st char: %d, a syntax error at \"%s\"\n",linenum+1,charnum+1,yytext);
-		else
-			printf("Line %d, 1st char: %d, a syntax error in lacking of semicolon\n",linenum+1,befchar+2);
+		}
+		else{
+			printf("Line %d : %s\n",linenum,msg);
+			printf("Line %d, 1st char: %d, a syntax error in lacking of semicolon\n",linenum,befchar+2);
+		}
 	}
 	duplicate=0;
 }

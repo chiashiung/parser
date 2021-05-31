@@ -92,6 +92,7 @@ class			{strcat(msg,"class");charnum+=yyleng;return CLASS;}
 final			{strcat(msg,"final");charnum+=yyleng;return FINAL;}
 new				{strcat(msg,"new");charnum+=yyleng;return NEW;}
 static			{strcat(msg,"static");charnum+=yyleng;return STATIC;}
+main			{strcat(msg,"main");charnum+=yyleng;return MAIN;}
 
 public			{strcat(msg,"public");charnum+=yyleng;return PUBLIC;}
 protected		{strcat(msg,"protected");charnum+=yyleng;return PROTECTED;}
